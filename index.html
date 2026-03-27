@@ -101,68 +101,116 @@
   </div>
 
 <script>
-    // ===== Helpers =====
-    function getCookie(name) {
-      return document.cookie.split('; ').find(r => r.startsWith(name+'='))?.split('=')[1] || null;
+
+let vagas = 5;
+
+setInterval(function() {
+    if (vagas > 1) {
+        vagas--;
+        document.getElementById("contador").innerText = vagas;
     }
-    function buildFbc() {
-      const fbclid = new URLSearchParams(location.search).get('fbclid');
-      return fbclid ? ('fb.1.' + Date.now() + '.' + fbclid) : null;
-    }
-    function sendCapi(path, body) {
-      return fetch('https://meta-fd3h.onrender.com' + path, {
+}, 5000);
+
+function getCookie(name) {
+    return document.cookie.split('; ').find(r => r.startsWith(name + '='))?.split('=')[1] || null;
+}
+
+function buildFbc() {
+    const fbclid = new URLSearchParams(location.search).get('fbclid');
+    return fbclid ? ('fb.1.' + Date.now() + '.' + fbclid) : null;
+}
+
+function getUTMs() {
+    const params = new URLSearchParams(window.location.search);
+
+    return {
+        utm_source: params.get("utm_source"),
+        utm_medium: params.get("utm_medium"),
+        utm_campaign: params.get("utm_campaign"),
+        utm_content: params.get("utm_content"),
+        utm_term: params.get("utm_term"),
+        utm_id: params.get("utm_id"),
+        ad_id: params.get("ad_id"),
+        adset_id: params.get("adset_id")
+    };
+}
+
+function sendCapi(path, body) {
+    return fetch('https://metaa.onrender.com' + path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
         mode: 'cors',
         keepalive: true
-      }).catch(()=>{});
-    }
+    }).catch(() => {});
+}
 
-    // ===== PageView (servidor) — 1x por sessão =====
-    function sendPageViewOnce() {
-      if (sessionStorage.getItem('pv_sent') === '1') return;
-      const eventId = (crypto && crypto.randomUUID) ? crypto.randomUUID()
-                      : ('pv-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-      const fbp = getCookie('_fbp') || null;
-      const fbc = buildFbc();
+function sendPageViewOnce() {
 
-      const payload = {
+    if (sessionStorage.getItem('pv_sent') === '1') return;
+
+    const eventId = (crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ('pv-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+
+    const fbp = getCookie('_fbp') || null;
+    const fbc = buildFbc();
+    const utms = getUTMs();
+
+    const payload = {
         event_id: eventId,
         source_url: location.href,
+        custom_data: utms,
         ...(fbp ? { fbp } : {}),
         ...(fbc ? { fbc } : {})
-      };
-      sendCapi('/capi/pageview', payload);
-      sessionStorage.setItem('pv_sent', '1');
-    }
-    window.addEventListener('DOMContentLoaded', sendPageViewOnce);
+    };
 
-    // ===== Lead (servidor) =====
-    function enviarLeadCAPI(eventId) {
-      const fbp = getCookie('_fbp') || null;
-      const fbc = buildFbc();
-      const payload = {
+    if (typeof fbq !== "undefined") {
+        fbq('track', 'PageView', {}, { eventID: eventId });
+    }
+
+    sendCapi('/capi/pageview', payload);
+
+    sessionStorage.setItem('pv_sent', '1');
+}
+
+window.addEventListener('DOMContentLoaded', sendPageViewOnce);
+
+function enviarLeadCAPI(eventId) {
+
+    const fbp = getCookie('_fbp') || null;
+    const fbc = buildFbc();
+    const utms = getUTMs();
+
+    const payload = {
         event_id: eventId,
         source_url: location.href,
+        custom_data: utms,
         ...(fbp ? { fbp } : {}),
-        ...(fbc ? { fbc } : {}),
-        // adiciona custom_data com value + currency (obrigatório pro Meta)
-        custom_data: {
-          value: 0.00,
-          currency: "BRL"
-        }
-      };
-      sendCapi('/capi/lead', payload);
+        ...(fbc ? { fbc } : {})
+    };
+
+    sendCapi('/capi/lead', payload);
+}
+
+function irTelegram() {
+
+    const eventId = (crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : ('lead-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+
+    if (typeof fbq !== "undefined") {
+        fbq('track', 'Lead', {}, { eventID: eventId });
     }
 
-    function irTelegram() {
-      const eventId = (crypto && crypto.randomUUID) ? crypto.randomUUID()
-                      : ('lead-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-      enviarLeadCAPI(eventId);
-      setTimeout(()=>{ window.location.href = "https://striketips.github.io/STRIKETIPS/redir.html"; }, 400);
-    }
-  </script>
+    enviarLeadCAPI(eventId);
+
+    setTimeout(() => {
+        window.location.href = "https://striketips.github.io/STRIKETIPS/redir.html" + window.location.search;
+    }, 400);
+}
+
+</script>
 
 
 </body>
