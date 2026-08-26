@@ -66,8 +66,59 @@
       cursor: pointer; font-weight: bold; margin-top: 20px; animation: pulse 1.5s infinite;
     }
     @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-    .prints, .icons-section { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin: 30px 0; }
-    .prints img, .icons-section img { width: 280px; border-radius: 10px; border: 2px solid #00ff00; }
+    .prints-carousel {
+  width: min(100%, 420px);
+  margin: 30px auto;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  touch-action: pan-y;
+}
+
+.prints-track {
+  display: flex;
+  transition: transform 0.45s ease;
+  will-change: transform;
+}
+
+.prints-slide {
+  min-width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+}
+
+.prints-slide img {
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 2px solid #00ff00;
+  display: block;
+  box-sizing: border-box;
+}
+
+.prints-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.prints-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #555;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.prints-dot.active {
+  background: #00ff00;
+  transform: scale(1.2);
+}
     .store-buttons {margin-top:20px; display:flex; gap:20px; flex-wrap:wrap; justify-content:center;}
     .store-buttons a {width:180px; height:60px; display:flex; align-items:center; justify-content:center;}
     .store-buttons a img {width:100%; height:100%; object-fit:contain;}
@@ -109,10 +160,30 @@
   <button class="button" onclick="irTelegram()">ACESSO GRÁTIS CLICK AQUI</button>
 
   <div class="prints-title">RESULTADOS DO GRUPO</div>
-  <div class="prints">
-    <img src="B1.JPG" alt="Bilhete 1">
-    <img src="B2.JPG" alt="Bilhete 2">
+
+<div class="prints-carousel" id="printsCarousel">
+
+  <div class="prints-track" id="printsTrack">
+
+    <div class="prints-slide">
+      <img src="B1.JPG" alt="Bilhete 1">
+    </div>
+
+    <div class="prints-slide">
+      <img src="B2.JPG" alt="Bilhete 2">
+    </div>
+
   </div>
+
+</div>
+
+<div class="prints-dots" id="printsDots">
+
+  <button class="prints-dot active" type="button"></button>
+
+  <button class="prints-dot" type="button"></button>
+
+</div>
 
   <button class="button" onclick="irTelegram()">ACESSO GRÁTIS CLICK AQUI</button>
   
@@ -216,7 +287,181 @@ function enviarLeadCAPI(eventId) {
 
     sendCapi('/capi/lead', payload);
 }
+/* =========================
+   CARROSSEL
+   ========================= */
 
+const printsCarousel =
+  document.getElementById('printsCarousel');
+
+const printsTrack =
+  document.getElementById('printsTrack');
+
+const printsDots =
+  document.querySelectorAll('.prints-dot');
+
+let printIndex = 0;
+let printStartX = 0;
+let printCurrentX = 0;
+let printDragging = false;
+let printAuto;
+
+
+/* MOSTRAR IMAGEM */
+
+function showPrint(index) {
+
+  printIndex = (index + 2) % 2;
+
+  printsTrack.style.transform =
+    `translateX(-${printIndex * 100}%)`;
+
+  printsDots.forEach((dot, i) => {
+
+    dot.classList.toggle(
+      'active',
+      i === printIndex
+    );
+
+  });
+
+}
+
+
+/* PASSAGEM AUTOMÁTICA */
+
+function startPrintAuto() {
+
+  clearInterval(printAuto);
+
+  printAuto = setInterval(() => {
+
+    showPrint(printIndex + 1);
+
+  }, 4000);
+
+}
+
+
+/* CLICAR NAS BOLINHAS */
+
+printsDots.forEach((dot, i) => {
+
+  dot.addEventListener('click', () => {
+
+    showPrint(i);
+
+    startPrintAuto();
+
+  });
+
+});
+
+
+/* COMEÇOU A ARRASTAR */
+
+printsCarousel.addEventListener(
+  'pointerdown',
+  (e) => {
+
+    printDragging = true;
+
+    printStartX = e.clientX;
+    printCurrentX = e.clientX;
+
+    printsCarousel.setPointerCapture(
+      e.pointerId
+    );
+
+    printsTrack.style.transition = 'none';
+
+  }
+);
+
+
+/* ARRASTANDO */
+
+printsCarousel.addEventListener(
+  'pointermove',
+  (e) => {
+
+    if (!printDragging) return;
+
+    printCurrentX = e.clientX;
+
+    const delta =
+      printCurrentX - printStartX;
+
+    const percent =
+      (delta / printsCarousel.clientWidth) * 100;
+
+    printsTrack.style.transform =
+      `translateX(calc(-${printIndex * 100}% + ${percent}%))`;
+
+  }
+);
+
+
+/* SOLTOU O DEDO/MOUSE */
+
+printsCarousel.addEventListener(
+  'pointerup',
+  (e) => {
+
+    if (!printDragging) return;
+
+    printDragging = false;
+
+    const delta =
+      printCurrentX - printStartX;
+
+    printsTrack.style.transition =
+      'transform 0.45s ease';
+
+    if (Math.abs(delta) > 50) {
+
+      showPrint(
+        printIndex +
+        (delta < 0 ? 1 : -1)
+      );
+
+    } else {
+
+      showPrint(printIndex);
+
+    }
+
+    startPrintAuto();
+
+  }
+);
+
+
+/* CANCELAMENTO */
+
+printsCarousel.addEventListener(
+  'pointercancel',
+  () => {
+
+    printDragging = false;
+
+    printsTrack.style.transition =
+      'transform 0.45s ease';
+
+    showPrint(printIndex);
+
+    startPrintAuto();
+
+  }
+);
+
+
+/* INICIAR */
+
+showPrint(0);
+
+startPrintAuto();
+  
 function irTelegram() {
 
     const eventId = (crypto && crypto.randomUUID)
