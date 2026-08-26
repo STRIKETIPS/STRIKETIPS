@@ -187,6 +187,8 @@
 
   <button class="prints-dot" type="button"></button>
 
+  <button class="prints-dot" type="button"></button>
+
 </div>
 
   <button class="button" onclick="irTelegram()">ACESSO GRÁTIS CLICK AQUI</button>
@@ -315,7 +317,7 @@ let printAuto;
 
 function showPrint(index) {
 
-  printIndex = (index + 2) % 2;
+  printIndex = (index + printsDots.length) % printsDots.length;
 
   printsTrack.style.transform =
     `translateX(-${printIndex * 100}%)`;
